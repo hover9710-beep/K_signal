@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>K-시그널 트렌드 대시보드</title>
+<style>
+  /* 한국어 UI 기본 스타일 */
+  body { font-family: "맑은 고딕", "Malgun Gothic", sans-serif;
+         margin: 24px; color: #222; background: #fafafa; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .global-note { font-size: 13px; color: #666; margin: 0 0 24px; }
+  section.source { margin-bottom: 36px; }
+  h2 { font-size: 18px; margin: 0 0 6px; }
+  .meta { font-size: 13px; color: #444; margin: 0 0 4px; }
+  .meta .pill { display: inline-block; background: #eef; color: #335;
+                border-radius: 10px; padding: 1px 8px; margin-right: 6px; font-size: 12px; }
+  .source-file { font-size: 12px; color: #999; margin: 0 0 10px; }
+  .error { color: #c0392b; background: #fdecec; padding: 10px 12px;
+           border-radius: 6px; font-size: 14px; }
+  table { border-collapse: collapse; width: 100%; max-width: 880px;
+          background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+  th, td { padding: 8px 12px; border-bottom: 1px solid #eee;
+           text-align: left; font-size: 14px; }
+  th { background: #f0f0f0; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td.name { font-weight: 600; }
+  td.verdict { font-weight: 600; }
+  /* 종합판정별 행 색상: 상승=붉은 계열, 하락=푸른 계열, 정상=회색, 데이터부족=흐리게 */
+  tr.rise { background: #fdecec; }
+  tr.rise td.verdict { color: #c0392b; }
+  tr.fall { background: #eaf2fb; }
+  tr.fall td.verdict { color: #2255aa; }
+  tr.flat { background: #f6f6f6; }
+  tr.flat td.verdict { color: #555; }
+  tr.faint { opacity: .45; }
+</style>
+</head>
+<body>
+  <h1>K-시그널 트렌드 대시보드</h1>
+  <p class="global-note">
+    분석 기준: z-score + Theil-Sen 추세(최근 {{ window }}주) · {{ exclude_note }}
+  </p>
+
+  {% for src in sources %}
+  <section class="source">
+    <h2>{{ src.label }}</h2>
+    <p class="meta">
+      <span class="pill">단위: {{ src.unit }}</span>
+      <span class="pill">스케일: {{ src.scaling }}</span>
+      <span class="pill">품목 간 비교: {{ "가능" if src.cross_item else "불가" }}</span>
+      {{ src.note }}
+    </p>
+
+    {% if src.error %}
+      <p class="error">{{ src.error }}</p>
+    {% else %}
+      <p class="source-file">원본: {{ src.source_file }} · 평가 기준주: {{ src.eval_week }}</p>
+      <table>
+        <thead>
+          <tr>
+            <th>품목</th>
+            <th>평가주</th>
+            <th>값</th>
+            <th>z-score</th>
+            <th>추세%(최근{{ window }}주)</th>
+            <th>종합판정</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in src.rows %}
+          <tr class="{{ row.css }}">
+            <td class="name">{{ row.name }}</td>
+            <td>{{ row.period }}</td>
+            <td class="num">{{ row.value }}</td>
+            <td class="num">{{ row.z }}</td>
+            <td class="num">{{ row.trend }}</td>
+            <td class="verdict">{{ row.verdict }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+  </section>
+  {% endfor %}
+</body>
+</html>

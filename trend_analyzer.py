@@ -102,6 +102,19 @@ def find_latest_json() -> str:
     return candidates[-1]
 
 
+def find_latest_for(source: str) -> str | None:
+    """주어진 소스 키('search'/'shopping')의 최신 파일 경로를 돌려준다(없으면 None).
+
+    웹앱 등 import 사용처를 위해 sys.exit 대신 None 을 반환한다.
+    (전역 SOURCE 기반의 find_latest_json 동작은 CLI 용으로 그대로 둔다.)
+    """
+    if source not in SOURCE_PATTERNS:
+        return None
+    glob_name, _ = SOURCE_PATTERNS[source]
+    candidates = sorted(glob.glob(os.path.join(DATA_DIR, glob_name)))
+    return candidates[-1] if candidates else None
+
+
 def load_series(path: str) -> dict[str, list[tuple[str, float]]]:
     """JSON 을 읽어 {품목명: [(period, ratio), ...]} (period 오름차순) 으로 정리."""
     try:
@@ -221,6 +234,29 @@ def analyze_one(points: list[tuple[str, float]]) -> dict:
     }
 
 
+def sort_rows(rows: list[tuple[str, dict]]) -> list[tuple[str, dict]]:
+    """종합 점수(z + 추세%) 내림차순 정렬. 데이터부족(어느 한쪽이라도 NaN)은 맨 아래."""
+
+    def sort_key(item: tuple[str, dict]) -> float:
+        z, trend = item[1]["z"], item[1]["trend"]
+        if z != z or trend != trend:  # NaN → 맨 아래
+            return float("-inf")
+        return z + trend
+
+    return sorted(rows, key=sort_key, reverse=True)
+
+
+def analyze_series(
+    series: dict[str, list[tuple[str, float]]]
+) -> list[tuple[str, dict]]:
+    """{이름:[(period,ratio)...]} 를 분석해 정렬된 [(이름, 결과dict)] 로 돌려준다.
+
+    웹앱/리포트가 터미널과 '동일한 분석·정렬 로직'을 재사용하기 위한 진입점.
+    """
+    rows = [(name, analyze_one(points)) for name, points in series.items()]
+    return sort_rows(rows)
+
+
 def _fmt(value: float, width: int, decimals: int) -> str:
     """NaN 은 '-' 로, 그 외에는 소수 자리수에 맞춰 출력한다. 폭(width)은 항상 맞춘다."""
     if value != value:  # NaN 체크
@@ -238,15 +274,8 @@ def print_table(rows: list[tuple[str, dict]]) -> None:
     print(header)
     print("-" * len(header))
 
-    # 정렬 점수 = z + 추세% (두 신호를 합친 점수). 상승이 위, 하락이 아래.
-    # 데이터부족(어느 한쪽이라도 NaN)은 맨 아래로 보낸다.
-    def sort_key(item: tuple[str, dict]) -> float:
-        z, trend = item[1]["z"], item[1]["trend"]
-        if z != z or trend != trend:  # NaN → 맨 아래
-            return float("-inf")
-        return z + trend
-
-    for name, r in sorted(rows, key=sort_key, reverse=True):
+    # 정렬 점수 = z + 추세% (sort_rows 공통 로직). 상승이 위, 하락이 아래.
+    for name, r in sort_rows(rows):
         print(
             f"{name:<14}{r['period']:<14}"
             f"{_fmt(r['value'], 8, 2)}"
@@ -309,14 +338,8 @@ def write_html_report(rows: list[tuple[str, dict]], src_path: str) -> str:
 
     터미널 표와 동일한 정렬·데이터·판정을 그대로 사용하며, 출력 형식만 HTML 이다.
     """
-    # 정렬 점수 = z + 추세% (print_table 과 동일). 데이터부족(NaN)은 맨 아래로.
-    def sort_key(item: tuple[str, dict]) -> float:
-        z, trend = item[1]["z"], item[1]["trend"]
-        if z != z or trend != trend:  # NaN → 맨 아래
-            return float("-inf")
-        return z + trend
-
-    sorted_rows = sorted(rows, key=sort_key, reverse=True)
+    # 정렬은 sort_rows 공통 로직 사용(print_table 과 동일). 데이터부족은 맨 아래.
+    sorted_rows = sort_rows(rows)
 
     # 평가 기준주: 데이터부족이 아닌 첫 행의 평가주(대부분 품목이 동일 주).
     eval_week = next(
