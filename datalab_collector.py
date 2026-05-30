@@ -30,7 +30,7 @@ from __future__ import annotations
 import json
 import os
 import sys
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -140,7 +140,11 @@ def organize(raw: dict) -> dict[str, list[tuple[str, float]]]:
 def save_json(series: dict, window: dict) -> str:
     """data/datalab_YYYY-MM-DD.json 으로 저장하고 경로를 돌려준다."""
     os.makedirs(DATA_DIR, exist_ok=True)
-    today = date.today().isoformat()
+    # 파일명 날짜는 '한국 시간(KST=UTC+9) 기준 오늘'로 명시 생성한다.
+    # [이유] GitHub Actions 러너는 UTC라서 단순 date.today() 를 쓰면 한국보다
+    #        하루 빠른 날짜로 저장돼(예: 한국 5/31 새벽 → UTC 5/30), 매주 돌려도
+    #        새 스냅샷 파일이 안 쌓이는 문제가 있었다. KST 로 고정해 해결한다.
+    today = datetime.now(timezone(timedelta(hours=9))).date().isoformat()
     path = os.path.join(DATA_DIR, f"datalab_{today}.json")
 
     payload = {
