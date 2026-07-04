@@ -3,85 +3,183 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>K-시그널 트렌드 대시보드</title>
+<title>K-SIGNAL 트렌드 대시보드</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link
+  rel="stylesheet"
+  href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <style>
-  /* 한국어 UI 기본 스타일 */
-  body { font-family: "맑은 고딕", "Malgun Gothic", sans-serif;
-         margin: 24px; color: #222; background: #fafafa; }
-  h1 { font-size: 22px; margin: 0 0 4px; }
-  .global-note { font-size: 13px; color: #666; margin: 0 0 24px; }
-  section.source { margin-bottom: 36px; }
-  h2 { font-size: 18px; margin: 0 0 6px; }
-  .meta { font-size: 13px; color: #444; margin: 0 0 4px; }
-  .meta .pill { display: inline-block; background: #eef; color: #335;
-                border-radius: 10px; padding: 1px 8px; margin-right: 6px; font-size: 12px; }
-  .source-file { font-size: 12px; color: #999; margin: 0 0 10px; }
-  .error { color: #c0392b; background: #fdecec; padding: 10px 12px;
-           border-radius: 6px; font-size: 14px; }
-  table { border-collapse: collapse; width: 100%; max-width: 880px;
-          background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
-  th, td { padding: 8px 12px; border-bottom: 1px solid #eee;
-           text-align: left; font-size: 14px; }
-  th { background: #f0f0f0; }
-  td.num { text-align: right; font-variant-numeric: tabular-nums; }
-  td.name { font-weight: 600; }
-  td.verdict { font-weight: 600; }
-  /* 종합판정별 행 색상: 상승=붉은 계열, 하락=푸른 계열, 정상=회색, 데이터부족=흐리게 */
-  tr.rise { background: #fdecec; }
-  tr.rise td.verdict { color: #c0392b; }
-  tr.fall { background: #eaf2fb; }
-  tr.fall td.verdict { color: #2255aa; }
-  tr.flat { background: #f6f6f6; }
-  tr.flat td.verdict { color: #555; }
-  tr.faint { opacity: .45; }
+  /* ── 다크 테마 토큰 ─────────────────────────────────────────── */
+  :root {
+    --bg: #0a0c10;          /* 페이지 배경 */
+    --card: #14171f;        /* 카드 배경 */
+    --line: #232733;        /* 구분선/보더 */
+    --text: #e8eaed;        /* 본문 텍스트 */
+    --muted: #9aa0a6;       /* 보조 텍스트 */
+    --accent: #7aa2ff;      /* 타이틀 포인트 */
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Pretendard", Pretendard, system-ui, -apple-system,
+                 "Segoe UI", "Malgun Gothic", sans-serif;
+    margin: 0;
+    padding: 28px 20px 56px;
+    color: var(--text);
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; }
+
+  /* ── 헤더 ───────────────────────────────────────────────────── */
+  header { margin: 0 0 28px; }
+  h1 {
+    font-size: 26px; font-weight: 800; letter-spacing: .5px;
+    margin: 0 0 4px; color: var(--text);
+  }
+  h1 .k { color: var(--accent); }
+  header .subtitle { font-size: 14px; color: var(--muted); margin: 0; }
+  .global-note {
+    font-size: 12.5px; color: var(--muted);
+    margin: 12px 0 0; padding: 0;
+  }
+
+  /* ── 카드 ───────────────────────────────────────────────────── */
+  section.card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 20px 20px 8px;
+    margin: 0 0 22px;
+    box-shadow: 0 1px 2px rgba(0,0,0,.4);
+  }
+  section.card > h2 {
+    font-size: 17px; font-weight: 700; margin: 0 0 10px; color: var(--text);
+  }
+  .meta { font-size: 12.5px; color: var(--muted); margin: 0 0 6px; }
+  .meta .pill {
+    display: inline-block;
+    background: #1d2230; color: #c7cdd6;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 2px 10px; margin: 0 6px 6px 0; font-size: 12px;
+  }
+  .source-file { font-size: 11.5px; color: #6b7178; margin: 2px 0 14px; }
+  .error {
+    color: #ffb4ab; background: #2a1416;
+    border: 1px solid #4a2226;
+    padding: 12px 14px; border-radius: 8px; font-size: 13.5px;
+    margin: 6px 0 14px;
+  }
+
+  /* ── 표 ─────────────────────────────────────────────────────── */
+  .table-scroll { width: 100%; overflow-x: auto; margin: 0 0 12px; }
+  table {
+    border-collapse: collapse; width: 100%; min-width: 560px;
+    font-size: 13.5px;
+  }
+  th, td {
+    padding: 9px 12px; border-bottom: 1px solid var(--line);
+    text-align: left; white-space: nowrap;
+  }
+  thead th {
+    color: var(--muted); font-weight: 600; font-size: 12px;
+    border-bottom: 1px solid #2e3444;
+    position: sticky; top: 0;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: rgba(255,255,255,.02); }
+  td.num {
+    text-align: right; font-variant-numeric: tabular-nums; color: var(--text);
+  }
+  td.name { font-weight: 600; color: var(--text); }
+  td.period { color: var(--muted); }
+  tr.faint td { opacity: .5; }
+
+  /* ── 종합판정 배지(pill) ────────────────────────────────────── */
+  .badge {
+    display: inline-block; border-radius: 999px;
+    padding: 3px 11px; font-size: 12px; font-weight: 700;
+    line-height: 1.4; border: 1px solid transparent; white-space: nowrap;
+  }
+  .badge.surge  { background: #3a2410; color: #ffb457; border-color: #5a3813; } /* 급등=주황 */
+  .badge.rise   { background: #0e2a2b; color: #4fd6d0; border-color: #14484a; } /* 상승=청록 */
+  .badge.flat   { background: #22262f; color: #aab1bb; border-color: #333846; } /* 정상=회색 */
+  .badge.watch  { background: #322d0e; color: #ecd35a; border-color: #4d4514; } /* 하락관찰=노랑 */
+  .badge.plunge { background: #2f1315; color: #ff8b83; border-color: #562225; } /* 급락=빨강 */
+  .badge.na     { background: #1a1d24; color: #6b7178; border-color: #262b35; } /* 데이터부족=흐린 회색 */
+
+  /* ── 모바일(갤럭시 등) 반응형 ───────────────────────────────── */
+  @media (max-width: 560px) {
+    body { padding: 20px 12px 44px; }
+    h1 { font-size: 22px; }
+    section.card { padding: 16px 14px 6px; border-radius: 12px; }
+    th, td { padding: 8px 10px; }
+  }
 </style>
 </head>
 <body>
-  <h1>K-시그널 트렌드 대시보드</h1>
-  <p class="global-note">
-    분석 기준: z-score + Theil-Sen 추세(최근 {{ window }}주) · {{ exclude_note }}
-  </p>
+  <div class="wrap">
+    <header>
+      <h1><span class="k">K-SIGNAL</span></h1>
+      <p class="subtitle">트렌드 대시보드 · 검색 &amp; 쇼핑 시그널</p>
+      <p class="global-note">
+        분석 기준: z-score + Theil-Sen 추세(최근 {{ window }}주) · {{ exclude_note }}
+      </p>
+    </header>
 
-  {% for src in sources %}
-  <section class="source">
-    <h2>{{ src.label }}</h2>
-    <p class="meta">
-      <span class="pill">단위: {{ src.unit }}</span>
-      <span class="pill">스케일: {{ src.scaling }}</span>
-      <span class="pill">품목 간 비교: {{ "가능" if src.cross_item else "불가" }}</span>
-      {{ src.note }}
-    </p>
+    {% for src in sources %}
+    <section class="card">
+      <h2>{{ src.label }}</h2>
+      <p class="meta">
+        <span class="pill">단위: {{ src.unit }}</span>
+        <span class="pill">스케일: {{ src.scaling }}</span>
+        <span class="pill">품목 간 비교: {{ "가능" if src.cross_item else "불가" }}</span>
+      </p>
+      <p class="meta">{{ src.note }}</p>
 
-    {% if src.error %}
-      <p class="error">{{ src.error }}</p>
-    {% else %}
-      <p class="source-file">원본: {{ src.source_file }} · 평가 기준주: {{ src.eval_week }}</p>
-      <table>
-        <thead>
-          <tr>
-            <th>품목</th>
-            <th>평가주</th>
-            <th>값</th>
-            <th>z-score</th>
-            <th>추세%(최근{{ window }}주)</th>
-            <th>종합판정</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for row in src.rows %}
-          <tr class="{{ row.css }}">
-            <td class="name">{{ row.name }}</td>
-            <td>{{ row.period }}</td>
-            <td class="num">{{ row.value }}</td>
-            <td class="num">{{ row.z }}</td>
-            <td class="num">{{ row.trend }}</td>
-            <td class="verdict">{{ row.verdict }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    {% endif %}
-  </section>
-  {% endfor %}
+      {% if src.error %}
+        <p class="error">{{ src.error }}</p>
+      {% else %}
+        <p class="source-file">원본: {{ src.source_file }} · 평가 기준주: {{ src.eval_week }}</p>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>품목</th>
+                <th>평가주</th>
+                <th>값</th>
+                <th>z-score</th>
+                <th>추세%(최근{{ window }}주)</th>
+                <th>종합판정</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in src.rows %}
+              {# 종합판정 → 배지 색상 클래스 매핑 #}
+              {% set badge = {
+                "급등경보": "surge",
+                "상승관찰": "rise",
+                "정상": "flat",
+                "하락관찰": "watch",
+                "급락": "plunge",
+                "데이터부족": "na"
+              }.get(row.verdict, "flat") %}
+              <tr class="{{ row.css }}">
+                <td class="name">{{ row.name }}</td>
+                <td class="period">{{ row.period }}</td>
+                <td class="num">{{ row.value }}</td>
+                <td class="num">{{ row.z }}</td>
+                <td class="num">{{ row.trend }}</td>
+                <td><span class="badge {{ badge }}">{{ row.verdict }}</span></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endif %}
+    </section>
+    {% endfor %}
+  </div>
 </body>
 </html>
